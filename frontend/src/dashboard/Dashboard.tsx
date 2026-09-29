@@ -13,7 +13,7 @@ import {
 } from 'recharts'
 import { lostCount, outcomeData, winsBySnail, wonCount } from './dashboardData.ts'
 import RechargeForm from '../payments/RechargeForm.tsx'
-import type { PaymentResult } from '../payments/payment.ts'
+import type { PaymentHandlingResult, PaymentResponseResult } from '../payments/payment.ts'
 
 interface DashboardProps {
   fullName: string
@@ -22,7 +22,7 @@ interface DashboardProps {
   balanceCents: number
   logoutError: string
   onLogout: () => void
-  onPaymentResult: (result: PaymentResult) => boolean
+  onPaymentResult: (result: PaymentResponseResult) => PaymentHandlingResult
 }
 
 const outcomeColors = ['#15803d', '#b91c1c']

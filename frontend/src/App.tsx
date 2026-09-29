@@ -3,7 +3,7 @@ import Dashboard from './dashboard/Dashboard.tsx'
 import RegisterForm from './auth/RegisterForm.tsx'
 import LoginForm from './auth/LoginForm.tsx'
 import { logout } from './auth/auth.ts'
-import { approvedCents, type PaymentResult } from './payments/payment.ts'
+import { approvedCents, type PaymentHandlingResult, type PaymentResponseResult } from './payments/payment.ts'
 import { readAppState, saveAppState, type AppState } from './persistence/storage.ts'
 
 function loadStoredState(): { state: AppState | null; error: string } {
@@ -32,7 +32,7 @@ function App() {
     }
   }
 
-  function handlePaymentResult(result: PaymentResult): boolean {
+  function handlePaymentResult(result: PaymentResponseResult): PaymentHandlingResult {
     const current = readAppState()
     if (!current?.user || current.session?.userId !== current.user.id
       || current.user.id !== result.payerId || current.user.email !== result.payerEmail) {
@@ -48,9 +48,13 @@ function App() {
         lastPayment: result.payment,
       },
     }
-    saveAppState(updated)
+    try {
+      saveAppState(updated)
+    } catch {
+      return 'persistence-failure'
+    }
     setStored({ state: updated, error: '' })
-    return cents !== null
+    return cents === null ? 'recorded' : 'credited'
   }
 
   return (

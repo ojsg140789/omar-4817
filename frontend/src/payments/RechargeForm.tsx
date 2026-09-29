@@ -1,12 +1,18 @@
 import { useState, type FormEvent } from 'react'
-import { parseAmountToCents, requestPayment, type PaymentFormValues, type PaymentResult } from './payment.ts'
+import {
+  parseAmountToCents,
+  requestPayment,
+  type PaymentFormValues,
+  type PaymentHandlingResult,
+  type PaymentResponseResult,
+} from './payment.ts'
 
 type RechargeErrors = Partial<Record<keyof PaymentFormValues, string>>
 
 interface RechargeFormProps {
   payerId: string
   payerEmail: string
-  onPaymentResult: (result: PaymentResult) => boolean
+  onPaymentResult: (result: PaymentResponseResult) => PaymentHandlingResult
 }
 
 const initialValues: PaymentFormValues = {
@@ -68,14 +74,24 @@ export default function RechargeForm({ payerId, payerEmail, onPaymentResult }: R
     setIsSubmitting(true)
     try {
       const result = await requestPayment(values, payerId, payerEmail)
-      if (onPaymentResult(result)) {
+      if (!('payment' in result)) {
+        setSubmitError(result.message)
+        return
+      }
+
+      const handling = onPaymentResult(result)
+      if (handling === 'persistence-failure') {
+        setSubmitError('No fue posible guardar el resultado de la recarga. Intenta nuevamente.')
+      } else if (result.kind === 'approved' && handling === 'credited') {
         setValues(initialValues)
-        setSubmitMessage('La recarga fue acreditada.')
+        setSubmitMessage(result.message)
+      } else if (result.kind !== 'approved' && handling === 'recorded') {
+        setSubmitError(result.message)
       } else {
-        setSubmitError('La recarga no pudo acreditarse. Intenta nuevamente.')
+        setSubmitError('SnailPay devolvió una respuesta inválida.')
       }
     } catch {
-      setSubmitError('La recarga no pudo acreditarse. Intenta nuevamente.')
+      setSubmitError('No fue posible guardar el resultado de la recarga. Intenta nuevamente.')
     } finally {
       setIsSubmitting(false)
     }

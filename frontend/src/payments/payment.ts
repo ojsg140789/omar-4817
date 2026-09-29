@@ -22,7 +22,11 @@ export interface PaymentFormValues {
   amount: string
 }
 
-export interface PaymentResult {
+export type PaymentResultKind = 'approved' | 'rejected' | 'system-error' | 'invalid-request'
+
+export interface PaymentResponseResult {
+  kind: PaymentResultKind
+  message: string
   httpOk: boolean
   httpStatus: number
   payment: PaymentResponse
@@ -32,6 +36,15 @@ export interface PaymentResult {
   requestedCardNumber: string
   requestedCvv: string
 }
+
+export interface PaymentClientErrorResult {
+  kind: 'network-error' | 'invalid-response'
+  message: string
+}
+
+export type PaymentResult = PaymentResponseResult | PaymentClientErrorResult
+
+export type PaymentHandlingResult = 'credited' | 'recorded' | 'persistence-failure'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -92,31 +105,63 @@ export async function requestPayment(
   const requestedCardNumber = values.cardNumber.replace(/\s+/g, '')
   const requestedCvv = values.cvv.trim()
   const normalizedPayerEmail = payerEmail.trim().toLowerCase()
-  const response = await fetch('/api/payments', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      cardNumber: requestedCardNumber,
-      expiry: values.expiry.trim(),
-      cvv: requestedCvv,
-      fullName: values.fullName.trim(),
-      amount: requestedCents / 100,
-      payerId,
-      payerEmail: normalizedPayerEmail,
-    }),
-  })
+  let response: Response
+  try {
+    response = await fetch('/api/payments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cardNumber: requestedCardNumber,
+        expiry: values.expiry.trim(),
+        cvv: requestedCvv,
+        fullName: values.fullName.trim(),
+        amount: requestedCents / 100,
+        payerId,
+        payerEmail: normalizedPayerEmail,
+      }),
+    })
+  } catch {
+    return {
+      kind: 'network-error',
+      message: 'No fue posible comunicarse con SnailPay. Intenta nuevamente.',
+    }
+  }
 
   let body: unknown
   try {
     body = await response.json()
   } catch {
-    throw new Error('SnailPay devolvió una respuesta que no es JSON válido.')
+    return {
+      kind: 'invalid-response',
+      message: 'SnailPay devolvió una respuesta inválida.',
+    }
   }
   if (!isPaymentResponse(body)) {
-    throw new Error('SnailPay devolvió una respuesta con formato inválido.')
+    return {
+      kind: 'invalid-response',
+      message: 'SnailPay devolvió una respuesta inválida.',
+    }
   }
 
-  return {
+  const kind = response.status === 200 && body.status === 'approved'
+    ? 'approved'
+    : response.status === 200 && body.status === 'rejected'
+      ? 'rejected'
+      : response.status === 500 && body.status === 'error'
+        ? 'system-error'
+        : response.status === 400 && body.status === 'error'
+          ? 'invalid-request'
+          : null
+  if (kind === null) {
+    return {
+      kind: 'invalid-response',
+      message: 'SnailPay devolvió una respuesta inválida.',
+    }
+  }
+
+  const result: PaymentResponseResult = {
+    kind,
+    message: kind === 'approved' ? 'Recarga aprobada correctamente.' : body.status_detail,
     httpOk: response.ok,
     httpStatus: response.status,
     payment: body,
@@ -126,9 +171,10 @@ export async function requestPayment(
     requestedCardNumber,
     requestedCvv,
   }
+  return result
 }
 
-export function approvedCents(result: PaymentResult): number | null {
+export function approvedCents(result: PaymentResponseResult): number | null {
   const { payment } = result
   const cents = amountToCents(payment.transaction_amount)
   if (!result.httpOk
