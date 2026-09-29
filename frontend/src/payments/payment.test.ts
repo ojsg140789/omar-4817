@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   amountToCents,
   approvedCents,
+  paymentEndpoint,
   parseAmountToCents,
   requestPayment,
   type PaymentResponse,
@@ -58,6 +59,7 @@ function jsonResponse(status: number, body: unknown): Response {
 
 afterEach(() => {
   vi.useRealTimers()
+  vi.unstubAllEnvs()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
@@ -81,6 +83,20 @@ describe('conversiones de monto', () => {
     expect(amountToCents(100.5)).toBe(10050)
     expect(amountToCents(0.001)).toBeNull()
     expect(amountToCents(0)).toBeNull()
+  })
+})
+
+describe('paymentEndpoint', () => {
+  it('conserva la ruta relativa cuando no hay base URL', () => {
+    expect(paymentEndpoint(undefined)).toBe('/api/payments')
+  })
+
+  it.each([
+    ['https://backend.example.com', 'https://backend.example.com/api/payments'],
+    ['https://backend.example.com/', 'https://backend.example.com/api/payments'],
+    [' https://backend.example.com/// ', 'https://backend.example.com/api/payments'],
+  ])('normaliza %s', (baseUrl, expectedEndpoint) => {
+    expect(paymentEndpoint(baseUrl)).toBe(expectedEndpoint)
   })
 })
 
@@ -123,6 +139,16 @@ describe('requestPayment', () => {
       idempotencyKey,
     })
     expect(new Headers((fetchMock.mock.calls[0]?.[1] as RequestInit).headers).get('Idempotency-Key')).toBe(idempotencyKey)
+  })
+
+  it('usa VITE_API_URL para construir el endpoint de la solicitud', async () => {
+    vi.stubEnv('VITE_API_URL', ' https://backend.example.com/// ')
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, paymentResponse()))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await requestPayment(paymentValues, 'user-test', 'test@example.com', idempotencyKey)
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('https://backend.example.com/api/payments')
   })
 
   it('clasifica un rechazo de fetch sin abort como error de red', async () => {

@@ -1,8 +1,39 @@
 import express from 'express'
+import cors from 'cors'
 import { getIdempotencyOperation, isIdempotencyKey } from './payments/idempotency.js'
 import { createInvalidPaymentResponse, simulatePayment, validatePaymentRequest } from './payments/snailPay.js'
 
 const app = express()
+
+const developmentOrigins = new Set([
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+])
+
+function configuredFrontendOrigin(): string | null {
+  const value = process.env.FRONTEND_ORIGIN?.trim()
+  if (!value) return null
+
+  try {
+    const origin = new URL(value).origin
+    return origin !== 'null' && value.replace(/\/+$/, '') === origin ? origin : null
+  } catch {
+    return null
+  }
+}
+
+function isAllowedOrigin(origin: string | undefined): boolean {
+  if (!origin) return true
+  const frontendOrigin = configuredFrontendOrigin()
+  if (process.env.NODE_ENV === 'production') return frontendOrigin === origin
+  return developmentOrigins.has(origin)
+}
+
+app.use(cors({
+  origin: (origin, callback) => callback(null, isAllowedOrigin(origin)),
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Idempotency-Key'],
+}))
 
 app.use(express.json())
 

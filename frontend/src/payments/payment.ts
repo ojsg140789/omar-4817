@@ -49,6 +49,11 @@ export type PaymentHandlingResult = 'credited' | 'already-credited' | 'recorded'
 
 const PAYMENT_TIMEOUT_MS = 5_000
 
+export function paymentEndpoint(baseUrl = import.meta.env.VITE_API_URL): string {
+  const normalizedBaseUrl = baseUrl?.trim().replace(/\/+$/, '') ?? ''
+  return `${normalizedBaseUrl}/api/payments`
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -123,7 +128,7 @@ export async function requestPayment(
   try {
     let response: Response
     try {
-      response = await fetch('/api/payments', {
+      response = await fetch(paymentEndpoint(), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
