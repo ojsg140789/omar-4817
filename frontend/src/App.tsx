@@ -3,8 +3,9 @@ import Dashboard from './dashboard/Dashboard.tsx'
 import RegisterForm from './auth/RegisterForm.tsx'
 import LoginForm from './auth/LoginForm.tsx'
 import { logout } from './auth/auth.ts'
-import { approvedCents, type PaymentHandlingResult, type PaymentResponseResult } from './payments/payment.ts'
-import { readAppState, saveAppState, type AppState, type Wallet } from './persistence/storage.ts'
+import { type PaymentHandlingResult, type PaymentResponseResult } from './payments/payment.ts'
+import { updateWalletForPayment } from './payments/wallet.ts'
+import { readAppState, saveAppState, type AppState } from './persistence/storage.ts'
 
 function loadStoredState(): { state: AppState | null; error: string } {
   try {
@@ -14,32 +15,6 @@ function loadStoredState(): { state: AppState | null; error: string } {
       state: null,
       error: error instanceof Error ? error.message : 'No se pudieron cargar los datos locales.',
     }
-  }
-}
-
-export function updateWalletForPayment(
-  wallet: Wallet,
-  result: PaymentResponseResult,
-): { wallet: Wallet; handling: Exclude<PaymentHandlingResult, 'persistence-failure'> } {
-  const cents = approvedCents(result)
-  if (cents === null) {
-    return {
-      wallet: { ...wallet, lastPayment: result.payment },
-      handling: 'recorded',
-    }
-  }
-
-  const alreadyApplied = wallet.appliedIdempotencyKeys.includes(result.idempotencyKey)
-  return {
-    wallet: {
-      ...wallet,
-      balanceCents: alreadyApplied ? wallet.balanceCents : wallet.balanceCents + cents,
-      lastPayment: result.payment,
-      appliedIdempotencyKeys: alreadyApplied
-        ? wallet.appliedIdempotencyKeys
-        : [...wallet.appliedIdempotencyKeys, result.idempotencyKey],
-    },
-    handling: alreadyApplied ? 'already-credited' : 'credited',
   }
 }
 

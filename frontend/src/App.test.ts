@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { updateWalletForPayment } from './App.tsx'
+import { updateWalletForPayment } from './payments/wallet.ts'
 import type { PaymentResponseResult } from './payments/payment.ts'
 import type { Wallet } from './persistence/storage.ts'
 
