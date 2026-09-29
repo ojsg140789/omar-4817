@@ -12,6 +12,6 @@ Este registro resume el uso de ChatGPT y Codex durante el desarrollo. No sustitu
 | Errores y timeout | ChatGPT y Codex | Propuestas de manejo de estados y pruebas | Clasificación de errores, AbortController, timeout y doble envío | Escenarios de red, respuesta inválida, timeout y doble envío verificados manualmente |
 | Pruebas | ChatGPT y Codex | Propuesta y creación de pruebas críticas | Vitest para SnailPay, pagos, storage y estadísticas | 24 pruebas ejecutadas, además de lint, typecheck y build |
 | Responsive y accesibilidad | ChatGPT y Codex | Revisión de interfaz y adaptación de estilos | Layout adaptable, foco, autocompletado y semántica existente | Pruebas manuales en 360 px, 768 px, escritorio, zoom y teclado |
-| Documentación | ChatGPT y Codex | Síntesis factual y redacción | README y este registro | Revisión de comandos, estructura, fixtures, límites y autorización de commit pendiente |
+| Documentación | ChatGPT y Codex | Síntesis factual y redacción | README y este registro | Revisión de comandos, estructura, fixtures y límites; autorización explícita y commit de documentación realizados |
 
 Las decisiones de alcance, la validación manual de interfaz y escenarios, la revisión de diffs y la autorización de commits fueron responsabilidad humana.
