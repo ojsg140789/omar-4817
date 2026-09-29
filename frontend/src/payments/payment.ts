@@ -38,13 +38,15 @@ export interface PaymentResponseResult {
 }
 
 export interface PaymentClientErrorResult {
-  kind: 'network-error' | 'invalid-response'
+  kind: 'network-error' | 'invalid-response' | 'timeout'
   message: string
 }
 
 export type PaymentResult = PaymentResponseResult | PaymentClientErrorResult
 
 export type PaymentHandlingResult = 'credited' | 'recorded' | 'persistence-failure'
+
+const PAYMENT_TIMEOUT_MS = 5_000
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -105,73 +107,94 @@ export async function requestPayment(
   const requestedCardNumber = values.cardNumber.replace(/\s+/g, '')
   const requestedCvv = values.cvv.trim()
   const normalizedPayerEmail = payerEmail.trim().toLowerCase()
-  let response: Response
+  const controller = new AbortController()
+  let timedOut = false
+  const timeoutId = setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, PAYMENT_TIMEOUT_MS)
+  const timeoutResult: PaymentClientErrorResult = {
+    kind: 'timeout',
+    message: 'La recarga tardó demasiado en responder. Intenta nuevamente.',
+  }
+
   try {
-    response = await fetch('/api/payments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        cardNumber: requestedCardNumber,
-        expiry: values.expiry.trim(),
-        cvv: requestedCvv,
-        fullName: values.fullName.trim(),
-        amount: requestedCents / 100,
-        payerId,
-        payerEmail: normalizedPayerEmail,
-      }),
-    })
-  } catch {
-    return {
-      kind: 'network-error',
-      message: 'No fue posible comunicarse con SnailPay. Intenta nuevamente.',
+    let response: Response
+    try {
+      response = await fetch('/api/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          cardNumber: requestedCardNumber,
+          expiry: values.expiry.trim(),
+          cvv: requestedCvv,
+          fullName: values.fullName.trim(),
+          amount: requestedCents / 100,
+          payerId,
+          payerEmail: normalizedPayerEmail,
+        }),
+      })
+    } catch {
+      return timedOut && controller.signal.aborted
+        ? timeoutResult
+        : {
+            kind: 'network-error',
+            message: 'No fue posible comunicarse con SnailPay. Intenta nuevamente.',
+          }
     }
-  }
 
-  let body: unknown
-  try {
-    body = await response.json()
-  } catch {
-    return {
-      kind: 'invalid-response',
-      message: 'SnailPay devolvió una respuesta inválida.',
+    let body: unknown
+    try {
+      body = await response.json()
+    } catch {
+      return timedOut && controller.signal.aborted
+        ? timeoutResult
+        : {
+            kind: 'invalid-response',
+            message: 'SnailPay devolvió una respuesta inválida.',
+          }
     }
-  }
-  if (!isPaymentResponse(body)) {
-    return {
-      kind: 'invalid-response',
-      message: 'SnailPay devolvió una respuesta inválida.',
+    if (timedOut && controller.signal.aborted) return timeoutResult
+    if (!isPaymentResponse(body)) {
+      return {
+        kind: 'invalid-response',
+        message: 'SnailPay devolvió una respuesta inválida.',
+      }
     }
-  }
 
-  const kind = response.status === 200 && body.status === 'approved'
-    ? 'approved'
-    : response.status === 200 && body.status === 'rejected'
-      ? 'rejected'
-      : response.status === 500 && body.status === 'error'
-        ? 'system-error'
-        : response.status === 400 && body.status === 'error'
-          ? 'invalid-request'
-          : null
-  if (kind === null) {
-    return {
-      kind: 'invalid-response',
-      message: 'SnailPay devolvió una respuesta inválida.',
+    const kind = response.status === 200 && body.status === 'approved'
+      ? 'approved'
+      : response.status === 200 && body.status === 'rejected'
+        ? 'rejected'
+        : response.status === 500 && body.status === 'error'
+          ? 'system-error'
+          : response.status === 400 && body.status === 'error'
+            ? 'invalid-request'
+            : null
+    if (kind === null) {
+      return {
+        kind: 'invalid-response',
+        message: 'SnailPay devolvió una respuesta inválida.',
+      }
     }
-  }
 
-  const result: PaymentResponseResult = {
-    kind,
-    message: kind === 'approved' ? 'Recarga aprobada correctamente.' : body.status_detail,
-    httpOk: response.ok,
-    httpStatus: response.status,
-    payment: body,
-    payerId,
-    payerEmail: normalizedPayerEmail,
-    requestedCents,
-    requestedCardNumber,
-    requestedCvv,
+    const result: PaymentResponseResult = {
+      kind,
+      message: kind === 'approved' ? 'Recarga aprobada correctamente.' : body.status_detail,
+      httpOk: response.ok,
+      httpStatus: response.status,
+      payment: body,
+      payerId,
+      payerEmail: normalizedPayerEmail,
+      requestedCents,
+      requestedCardNumber,
+      requestedCvv,
+    }
+    return result
+  } finally {
+    clearTimeout(timeoutId)
   }
-  return result
 }
 
 export function approvedCents(result: PaymentResponseResult): number | null {

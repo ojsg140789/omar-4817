@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import {
   parseAmountToCents,
   requestPayment,
@@ -49,6 +49,7 @@ export default function RechargeForm({ payerId, payerEmail, onPaymentResult }: R
   const [submitError, setSubmitError] = useState('')
   const [submitMessage, setSubmitMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const submissionLock = useRef(false)
 
   function updateField(field: keyof PaymentFormValues, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
@@ -59,7 +60,7 @@ export default function RechargeForm({ payerId, payerEmail, onPaymentResult }: R
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (isSubmitting) return
+    if (submissionLock.current) return
 
     const nextErrors = validate(values)
     if (Object.keys(nextErrors).length > 0) {
@@ -68,6 +69,7 @@ export default function RechargeForm({ payerId, payerEmail, onPaymentResult }: R
       return
     }
 
+    submissionLock.current = true
     setErrors({})
     setSubmitError('')
     setSubmitMessage('')
@@ -93,6 +95,7 @@ export default function RechargeForm({ payerId, payerEmail, onPaymentResult }: R
     } catch {
       setSubmitError('No fue posible guardar el resultado de la recarga. Intenta nuevamente.')
     } finally {
+      submissionLock.current = false
       setIsSubmitting(false)
     }
   }
