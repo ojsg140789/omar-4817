@@ -16,6 +16,8 @@ const paymentValues = {
   amount: '100.50',
 }
 
+const idempotencyKey = '550e8400-e29b-41d4-a716-446655440000'
+
 function paymentResponse(overrides: Partial<PaymentResponse> = {}): PaymentResponse {
   return {
     id: 'pay_test',
@@ -45,6 +47,7 @@ function approvedResult(overrides: Partial<PaymentResponseResult> = {}): Payment
     requestedCents: 10050,
     requestedCardNumber: '1234123412341234',
     requestedCvv: '543',
+    idempotencyKey,
     ...overrides,
   }
 }
@@ -105,15 +108,27 @@ describe('requestPayment', () => {
   ] as const)('clasifica %s a partir de HTTP y una respuesta válida', async (_name, status, body, kind) => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(status, body)))
 
-    const result = await requestPayment(paymentValues, 'user-test', 'test@example.com')
+    const result = await requestPayment(paymentValues, 'user-test', 'test@example.com', idempotencyKey)
 
     expect(result).toMatchObject({ kind, payment: body })
+  })
+
+  it('envia la clave de idempotencia y clasifica un conflicto HTTP 409', async () => {
+    const body = paymentResponse({ status: 'error', authorization_code: null })
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(409, body))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(requestPayment(paymentValues, 'user-test', 'test@example.com', idempotencyKey)).resolves.toMatchObject({
+      kind: 'idempotency-conflict',
+      idempotencyKey,
+    })
+    expect(new Headers((fetchMock.mock.calls[0]?.[1] as RequestInit).headers).get('Idempotency-Key')).toBe(idempotencyKey)
   })
 
   it('clasifica un rechazo de fetch sin abort como error de red', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
 
-    await expect(requestPayment(paymentValues, 'user-test', 'test@example.com')).resolves.toMatchObject({
+    await expect(requestPayment(paymentValues, 'user-test', 'test@example.com', idempotencyKey)).resolves.toMatchObject({
       kind: 'network-error',
     })
   })
@@ -121,7 +136,7 @@ describe('requestPayment', () => {
   it('clasifica una Response con contrato inválido como invalid-response', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, { status: 'approved' })))
 
-    await expect(requestPayment(paymentValues, 'user-test', 'test@example.com')).resolves.toMatchObject({
+    await expect(requestPayment(paymentValues, 'user-test', 'test@example.com', idempotencyKey)).resolves.toMatchObject({
       kind: 'invalid-response',
     })
   })
@@ -134,7 +149,7 @@ describe('requestPayment', () => {
     }))
     vi.stubGlobal('fetch', fetchMock)
 
-    const pending = requestPayment(paymentValues, 'user-test', 'test@example.com')
+    const pending = requestPayment(paymentValues, 'user-test', 'test@example.com', idempotencyKey)
     await vi.advanceTimersByTimeAsync(5_000)
 
     await expect(pending).resolves.toMatchObject({ kind: 'timeout' })

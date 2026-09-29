@@ -50,8 +50,10 @@ export default function RechargeForm({ payerId, payerEmail, onPaymentResult }: R
   const [submitMessage, setSubmitMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const submissionLock = useRef(false)
+  const operationKey = useRef<string | null>(null)
 
   function updateField(field: keyof PaymentFormValues, value: string) {
+    operationKey.current = null
     setValues((current) => ({ ...current, [field]: value }))
     setErrors((current) => ({ ...current, [field]: undefined }))
     setSubmitError('')
@@ -77,8 +79,16 @@ export default function RechargeForm({ payerId, payerEmail, onPaymentResult }: R
     setSubmitMessage('')
     setIsSubmitting(true)
     try {
-      const result = await requestPayment(values, payerId, payerEmail)
+      const idempotencyKey = operationKey.current ?? crypto.randomUUID()
+      operationKey.current = idempotencyKey
+      const result = await requestPayment(values, payerId, payerEmail, idempotencyKey)
       if (!('payment' in result)) {
+        setSubmitError(result.message)
+        return
+      }
+
+      if (result.kind === 'idempotency-conflict') {
+        operationKey.current = null
         setSubmitError(result.message)
         return
       }
@@ -86,10 +96,12 @@ export default function RechargeForm({ payerId, payerEmail, onPaymentResult }: R
       const handling = onPaymentResult(result)
       if (handling === 'persistence-failure') {
         setSubmitError('No fue posible guardar el resultado de la recarga. Intenta nuevamente.')
-      } else if (result.kind === 'approved' && handling === 'credited') {
+      } else if (result.kind === 'approved' && (handling === 'credited' || handling === 'already-credited')) {
+        operationKey.current = null
         setValues(initialValues)
         setSubmitMessage(result.message)
       } else if (result.kind !== 'approved' && handling === 'recorded') {
+        operationKey.current = null
         setSubmitError(result.message)
       } else {
         setSubmitError('SnailPay devolvió una respuesta inválida.')

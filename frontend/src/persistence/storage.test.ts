@@ -41,11 +41,13 @@ const user = {
   },
 }
 
-function appState(balanceCents: number, lastPayment?: unknown) {
+function appState(balanceCents: number, lastPayment?: unknown, appliedIdempotencyKeys?: unknown) {
+  const wallet = lastPayment === undefined ? { balanceCents } : { balanceCents, lastPayment }
+  if (appliedIdempotencyKeys !== undefined) Object.assign(wallet, { appliedIdempotencyKeys })
   return {
     user,
     session: { userId: user.id },
-    wallet: lastPayment === undefined ? { balanceCents } : { balanceCents, lastPayment },
+    wallet,
   }
 }
 
@@ -81,7 +83,7 @@ describe('readAppState', () => {
     storage.setItem('app:v1', JSON.stringify(appState(12345)))
 
     expect(readAppState()).toMatchObject({
-      wallet: { balanceCents: 12345, lastPayment: null },
+      wallet: { balanceCents: 12345, lastPayment: null, appliedIdempotencyKeys: [] },
     })
   })
 
@@ -103,6 +105,21 @@ describe('readAppState', () => {
     const payment = validPayment()
     storage.setItem('app:v1', JSON.stringify(appState(500, payment)))
 
-    expect(readAppState()?.wallet).toEqual({ balanceCents: 500, lastPayment: payment })
+    expect(readAppState()?.wallet).toEqual({ balanceCents: 500, lastPayment: payment, appliedIdempotencyKeys: [] })
+  })
+
+  it('conserva las claves de operaciones acreditadas', () => {
+    const key = '550e8400-e29b-41d4-a716-446655440000'
+    storage.setItem('app:v1', JSON.stringify(appState(500, null, [key])))
+
+    expect(readAppState()?.wallet.appliedIdempotencyKeys).toEqual([key])
+  })
+
+  it('rechaza una lista inválida de claves sin sobrescribir los datos', () => {
+    const original = JSON.stringify(appState(500, null, ['misma', 'misma']))
+    storage.setItem('app:v1', original)
+
+    expect(() => readAppState()).toThrow('Los datos locales no tienen un formato válido.')
+    expect(storage.getItem('app:v1')).toBe(original)
   })
 })

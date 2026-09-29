@@ -49,7 +49,7 @@ export async function registerUser(values: RegistrationValues): Promise<Registra
   const state: AppState = {
     user: { id, fullName, email, passwordCredential },
     session: { userId: id },
-    wallet: { balanceCents: 0, lastPayment: null },
+    wallet: { balanceCents: 0, lastPayment: null, appliedIdempotencyKeys: [] },
   }
 
   if (readAppState()?.user) {

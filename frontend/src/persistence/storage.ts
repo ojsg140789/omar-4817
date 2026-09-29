@@ -15,6 +15,7 @@ export interface Session {
 export interface Wallet {
   balanceCents: number
   lastPayment: PaymentResponse | null
+  appliedIdempotencyKeys: string[]
 }
 
 export interface AppState {
@@ -30,7 +31,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 type StoredAppState = Omit<AppState, 'wallet'> & {
-  wallet: Omit<Wallet, 'lastPayment'> & { lastPayment?: PaymentResponse | null }
+  wallet: Omit<Wallet, 'lastPayment' | 'appliedIdempotencyKeys'> & {
+    lastPayment?: PaymentResponse | null
+    appliedIdempotencyKeys?: string[]
+  }
 }
 
 function isAppState(value: unknown): value is StoredAppState {
@@ -41,6 +45,12 @@ function isAppState(value: unknown): value is StoredAppState {
   }
   if (value.wallet.lastPayment !== undefined && value.wallet.lastPayment !== null
     && !isPaymentResponse(value.wallet.lastPayment)) {
+    return false
+  }
+  if (value.wallet.appliedIdempotencyKeys !== undefined
+    && (!Array.isArray(value.wallet.appliedIdempotencyKeys)
+      || value.wallet.appliedIdempotencyKeys.some((key) => typeof key !== 'string' || !key.trim())
+      || new Set(value.wallet.appliedIdempotencyKeys).size !== value.wallet.appliedIdempotencyKeys.length)) {
     return false
   }
 
@@ -88,6 +98,7 @@ export function readAppState(): AppState | null {
     wallet: {
       balanceCents: value.wallet.balanceCents,
       lastPayment: value.wallet.lastPayment ?? null,
+      appliedIdempotencyKeys: value.wallet.appliedIdempotencyKeys ?? [],
     },
   }
 }

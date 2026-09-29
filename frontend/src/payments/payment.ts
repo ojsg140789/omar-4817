@@ -22,7 +22,7 @@ export interface PaymentFormValues {
   amount: string
 }
 
-export type PaymentResultKind = 'approved' | 'rejected' | 'system-error' | 'invalid-request'
+export type PaymentResultKind = 'approved' | 'rejected' | 'system-error' | 'invalid-request' | 'idempotency-conflict'
 
 export interface PaymentResponseResult {
   kind: PaymentResultKind
@@ -35,6 +35,7 @@ export interface PaymentResponseResult {
   requestedCents: number
   requestedCardNumber: string
   requestedCvv: string
+  idempotencyKey: string
 }
 
 export interface PaymentClientErrorResult {
@@ -44,7 +45,7 @@ export interface PaymentClientErrorResult {
 
 export type PaymentResult = PaymentResponseResult | PaymentClientErrorResult
 
-export type PaymentHandlingResult = 'credited' | 'recorded' | 'persistence-failure'
+export type PaymentHandlingResult = 'credited' | 'already-credited' | 'recorded' | 'persistence-failure'
 
 const PAYMENT_TIMEOUT_MS = 5_000
 
@@ -100,6 +101,7 @@ export async function requestPayment(
   values: PaymentFormValues,
   payerId: string,
   payerEmail: string,
+  idempotencyKey: string,
 ): Promise<PaymentResult> {
   const requestedCents = parseAmountToCents(values.amount)
   if (requestedCents === null) throw new Error('El monto no tiene un formato válido.')
@@ -123,7 +125,10 @@ export async function requestPayment(
     try {
       response = await fetch('/api/payments', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+        },
         signal: controller.signal,
         body: JSON.stringify({
           cardNumber: requestedCardNumber,
@@ -171,7 +176,9 @@ export async function requestPayment(
           ? 'system-error'
           : response.status === 400 && body.status === 'error'
             ? 'invalid-request'
-            : null
+            : response.status === 409 && body.status === 'error'
+              ? 'idempotency-conflict'
+              : null
     if (kind === null) {
       return {
         kind: 'invalid-response',
@@ -190,6 +197,7 @@ export async function requestPayment(
       requestedCents,
       requestedCardNumber,
       requestedCvv,
+      idempotencyKey,
     }
     return result
   } finally {
