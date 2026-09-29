@@ -66,6 +66,8 @@ export default function RechargeForm({ payerId, payerEmail, onPaymentResult }: R
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors)
       setSubmitMessage('')
+      const firstInvalid = event.currentTarget.elements.namedItem(Object.keys(nextErrors)[0])
+      if (firstInvalid instanceof HTMLInputElement) firstInvalid.focus()
       return
     }
 
@@ -104,7 +106,7 @@ export default function RechargeForm({ payerId, payerEmail, onPaymentResult }: R
     <form onSubmit={handleSubmit} noValidate aria-busy={isSubmitting}>
       <div className="field">
         <label htmlFor="recharge-card-number">Número de tarjeta</label>
-        <input id="recharge-card-number" name="cardNumber" inputMode="numeric" autoComplete="off" required
+        <input id="recharge-card-number" name="cardNumber" inputMode="numeric" autoComplete="cc-number" required
           value={values.cardNumber} onChange={(event) => updateField('cardNumber', event.target.value)}
           readOnly={isSubmitting} aria-invalid={Boolean(errors.cardNumber)}
           aria-describedby={errors.cardNumber ? 'recharge-card-number-error' : undefined} />
@@ -112,7 +114,7 @@ export default function RechargeForm({ payerId, payerEmail, onPaymentResult }: R
       </div>
       <div className="field">
         <label htmlFor="recharge-expiry">Expiración</label>
-        <input id="recharge-expiry" name="expiry" placeholder="MM/YY" autoComplete="off" required
+        <input id="recharge-expiry" name="expiry" placeholder="MM/YY" autoComplete="cc-exp" required
           value={values.expiry} onChange={(event) => updateField('expiry', event.target.value)}
           readOnly={isSubmitting} aria-invalid={Boolean(errors.expiry)}
           aria-describedby={errors.expiry ? 'recharge-expiry-error' : undefined} />
@@ -120,7 +122,7 @@ export default function RechargeForm({ payerId, payerEmail, onPaymentResult }: R
       </div>
       <div className="field">
         <label htmlFor="recharge-cvv">CVV</label>
-        <input id="recharge-cvv" name="cvv" inputMode="numeric" autoComplete="off" required
+        <input id="recharge-cvv" name="cvv" inputMode="numeric" autoComplete="cc-csc" required
           value={values.cvv} onChange={(event) => updateField('cvv', event.target.value)}
           readOnly={isSubmitting} aria-invalid={Boolean(errors.cvv)}
           aria-describedby={errors.cvv ? 'recharge-cvv-error' : undefined} />
@@ -128,7 +130,7 @@ export default function RechargeForm({ payerId, payerEmail, onPaymentResult }: R
       </div>
       <div className="field">
         <label htmlFor="recharge-full-name">Nombre completo</label>
-        <input id="recharge-full-name" name="fullName" autoComplete="name" required
+        <input id="recharge-full-name" name="fullName" autoComplete="cc-name" required
           value={values.fullName} onChange={(event) => updateField('fullName', event.target.value)}
           readOnly={isSubmitting} aria-invalid={Boolean(errors.fullName)}
           aria-describedby={errors.fullName ? 'recharge-full-name-error' : undefined} />
