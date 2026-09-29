@@ -1,5 +1,5 @@
 import express from 'express'
-import { createInvalidPaymentResponse, simulatePayment, validatePaymentRequest } from './snailPay.js'
+import { createInvalidPaymentResponse, simulatePayment, validatePaymentRequest } from './payments/snailPay.js'
 
 const app = express()
 

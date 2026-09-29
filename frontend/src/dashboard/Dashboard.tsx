@@ -12,18 +12,23 @@ import {
   YAxis,
 } from 'recharts'
 import { lostCount, outcomeData, winsBySnail, wonCount } from './dashboardData.ts'
+import RechargeForm from '../payments/RechargeForm.tsx'
+import type { PaymentResult } from '../payments/payment.ts'
 
 interface DashboardProps {
   fullName: string
+  userId: string
+  userEmail: string
   balanceCents: number
   logoutError: string
   onLogout: () => void
+  onPaymentResult: (result: PaymentResult) => boolean
 }
 
 const outcomeColors = ['#15803d', '#b91c1c']
 
-function Dashboard({ fullName, balanceCents, logoutError, onLogout }: DashboardProps) {
-  const [showRechargeMessage, setShowRechargeMessage] = useState(false)
+function Dashboard({ fullName, userId, userEmail, balanceCents, logoutError, onLogout, onPaymentResult }: DashboardProps) {
+  const [showRechargeForm, setShowRechargeForm] = useState(false)
 
   return (
     <section className="dashboard" aria-labelledby="dashboard-title">
@@ -95,10 +100,12 @@ function Dashboard({ fullName, balanceCents, logoutError, onLogout }: DashboardP
 
       <section className="recharge-card" aria-labelledby="recharge-title">
         <h3 id="recharge-title">Recargar saldo</h3>
-        <p>Agrega fondos cuando el servicio de pago esté disponible.</p>
-        <button type="button" onClick={() => setShowRechargeMessage(true)}>Recargar saldo</button>
-        {showRechargeMessage && (
-          <p className="notice" role="status">La recarga estará disponible al integrar SnailPay.</p>
+        <p>Agrega fondos con los datos ficticios de la prueba.</p>
+        <button type="button" onClick={() => setShowRechargeForm((visible) => !visible)}>
+          {showRechargeForm ? 'Ocultar formulario' : 'Recargar saldo'}
+        </button>
+        {showRechargeForm && (
+          <RechargeForm payerId={userId} payerEmail={userEmail} onPaymentResult={onPaymentResult} />
         )}
       </section>
     </section>

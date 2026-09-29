@@ -1,5 +1,5 @@
 import { verifyPassword } from './password.ts'
-import { readAppState, saveAppState, type AppState } from './storage.ts'
+import { readAppState, saveAppState, type AppState } from '../persistence/storage.ts'
 
 export interface LoginValues {
   email: string

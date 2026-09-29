@@ -1,4 +1,5 @@
-import type { PasswordCredential } from './password.ts'
+import type { PasswordCredential } from '../auth/password.ts'
+import { isPaymentResponse, type PaymentResponse } from '../payments/payment.ts'
 
 export interface User {
   id: string
@@ -13,6 +14,7 @@ export interface Session {
 
 export interface Wallet {
   balanceCents: number
+  lastPayment: PaymentResponse | null
 }
 
 export interface AppState {
@@ -27,10 +29,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function isAppState(value: unknown): value is AppState {
+type StoredAppState = Omit<AppState, 'wallet'> & {
+  wallet: Omit<Wallet, 'lastPayment'> & { lastPayment?: PaymentResponse | null }
+}
+
+function isAppState(value: unknown): value is StoredAppState {
   if (!isRecord(value) || !isRecord(value.wallet)) return false
   const balance = value.wallet.balanceCents
   if (typeof balance !== 'number' || !Number.isSafeInteger(balance) || balance < 0) {
+    return false
+  }
+  if (value.wallet.lastPayment !== undefined && value.wallet.lastPayment !== null
+    && !isPaymentResponse(value.wallet.lastPayment)) {
     return false
   }
 
@@ -55,8 +65,9 @@ function isAppState(value: unknown): value is AppState {
     return false
   }
 
-  return value.session === null
+  const hasValidSession = value.session === null
     || (isRecord(value.session) && value.session.userId === user.id)
+  return hasValidSession
 }
 
 export function readAppState(): AppState | null {
@@ -72,7 +83,13 @@ export function readAppState(): AppState | null {
   if (!isAppState(value)) {
     throw new Error('Los datos locales no tienen un formato válido. No se han borrado ni reemplazado.')
   }
-  return value
+  return {
+    ...value,
+    wallet: {
+      balanceCents: value.wallet.balanceCents,
+      lastPayment: value.wallet.lastPayment ?? null,
+    },
+  }
 }
 
 export function saveAppState(state: AppState): void {

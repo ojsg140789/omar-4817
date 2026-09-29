@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { login, type LoginErrors, type LoginValues } from './auth.ts'
-import type { AppState } from './storage.ts'
+import type { AppState } from '../persistence/storage.ts'
 
 interface LoginFormProps {
   onLoggedIn: (state: AppState) => void

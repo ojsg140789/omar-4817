@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import Dashboard from './Dashboard.tsx'
-import RegisterForm from './RegisterForm.tsx'
-import LoginForm from './LoginForm.tsx'
-import { logout } from './auth.ts'
-import { readAppState, type AppState } from './storage.ts'
+import Dashboard from './dashboard/Dashboard.tsx'
+import RegisterForm from './auth/RegisterForm.tsx'
+import LoginForm from './auth/LoginForm.tsx'
+import { logout } from './auth/auth.ts'
+import { approvedCents, type PaymentResult } from './payments/payment.ts'
+import { readAppState, saveAppState, type AppState } from './persistence/storage.ts'
 
 function loadStoredState(): { state: AppState | null; error: string } {
   try {
@@ -31,6 +32,27 @@ function App() {
     }
   }
 
+  function handlePaymentResult(result: PaymentResult): boolean {
+    const current = readAppState()
+    if (!current?.user || current.session?.userId !== current.user.id
+      || current.user.id !== result.payerId || current.user.email !== result.payerEmail) {
+      throw new Error('La sesión cambió durante la recarga. Recarga la página y vuelve a intentar.')
+    }
+
+    const cents = approvedCents(result)
+    const balanceCents = cents === null ? current.wallet.balanceCents : current.wallet.balanceCents + cents
+    const updated: AppState = {
+      ...current,
+      wallet: {
+        balanceCents,
+        lastPayment: result.payment,
+      },
+    }
+    saveAppState(updated)
+    setStored({ state: updated, error: '' })
+    return cents !== null
+  }
+
   return (
     <main>
       <h1>Sistema de caracoles</h1>
@@ -42,9 +64,12 @@ function App() {
       ) : state?.user && state.session?.userId === state.user.id ? (
         <Dashboard
           fullName={state.user.fullName}
+          userId={state.user.id}
+          userEmail={state.user.email}
           balanceCents={state.wallet.balanceCents}
           logoutError={logoutError}
           onLogout={handleLogout}
+          onPaymentResult={handlePaymentResult}
         />
       ) : state?.user ? (
         <LoginForm onLoggedIn={(authenticated) => setStored({ state: authenticated, error: '' })} />

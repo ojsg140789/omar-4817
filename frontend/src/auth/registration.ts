@@ -1,5 +1,5 @@
 import { derivePasswordCredential } from './password.ts'
-import { readAppState, saveAppState, type AppState } from './storage.ts'
+import { readAppState, saveAppState, type AppState } from '../persistence/storage.ts'
 
 export interface RegistrationValues {
   fullName: string
@@ -49,7 +49,7 @@ export async function registerUser(values: RegistrationValues): Promise<Registra
   const state: AppState = {
     user: { id, fullName, email, passwordCredential },
     session: { userId: id },
-    wallet: { balanceCents: 0 },
+    wallet: { balanceCents: 0, lastPayment: null },
   }
 
   if (readAppState()?.user) {

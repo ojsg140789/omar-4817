@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { registerUser, type RegistrationErrors, type RegistrationValues } from './registration.ts'
-import type { AppState } from './storage.ts'
+import type { AppState } from '../persistence/storage.ts'
 
 interface RegisterFormProps {
   onRegistered: (state: AppState) => void
