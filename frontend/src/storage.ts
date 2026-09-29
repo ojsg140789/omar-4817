@@ -79,6 +79,6 @@ export function saveAppState(state: AppState): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
   } catch {
-    throw new Error('No se pudo guardar la cuenta. Comprueba el almacenamiento del navegador y vuelve a intentar.')
+    throw new Error('No se pudieron guardar los datos locales. Comprueba el almacenamiento del navegador y vuelve a intentar.')
   }
 }
