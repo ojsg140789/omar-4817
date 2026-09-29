@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Dashboard from './Dashboard.tsx'
 import RegisterForm from './RegisterForm.tsx'
 import LoginForm from './LoginForm.tsx'
 import { logout } from './auth.ts'
@@ -39,13 +40,12 @@ function App() {
           <button type="button" onClick={() => setStored(loadStoredState())}>Volver a intentar</button>
         </section>
       ) : state?.user && state.session?.userId === state.user.id ? (
-        <section aria-labelledby="welcome-title">
-          <h2 id="welcome-title">Bienvenido, {state.user.fullName}</h2>
-          <p>Tu sesión local está activa.</p>
-          <p className="balance">Saldo: ${(state.wallet.balanceCents / 100).toFixed(2)}</p>
-          {logoutError && <p className="error" role="alert">{logoutError}</p>}
-          <button type="button" onClick={handleLogout}>Cerrar sesión</button>
-        </section>
+        <Dashboard
+          fullName={state.user.fullName}
+          balanceCents={state.wallet.balanceCents}
+          logoutError={logoutError}
+          onLogout={handleLogout}
+        />
       ) : state?.user ? (
         <LoginForm onLoggedIn={(authenticated) => setStored({ state: authenticated, error: '' })} />
       ) : (
