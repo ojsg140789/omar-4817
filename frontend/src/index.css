@@ -14,3 +14,75 @@ main {
   margin: 0 auto;
   padding: 2rem;
 }
+
+* {
+  box-sizing: border-box;
+}
+
+form {
+  max-width: 30rem;
+}
+
+.field {
+  margin-block: 1rem;
+}
+
+label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+input,
+button {
+  font: inherit;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid #64748b;
+  border-radius: 0.35rem;
+}
+
+input {
+  width: 100%;
+  color: inherit;
+  background: #ffffff;
+}
+
+input[aria-invalid='true'] {
+  border-color: #b91c1c;
+}
+
+button {
+  cursor: pointer;
+  color: #ffffff;
+  background: #1e40af;
+  border-color: #1e40af;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+input:focus-visible,
+button:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.field p {
+  margin: 0.3rem 0 0;
+  font-size: 0.9rem;
+}
+
+.error {
+  color: #b91c1c;
+}
+
+.notice {
+  font-size: 0.9rem;
+}
+
+.balance {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
