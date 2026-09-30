@@ -88,7 +88,7 @@ npm run lint
 npm run build
 ```
 
-La suite contiene cuatro archivos de prueba y 24 pruebas: 4 en backend y 20 en frontend. Cubren escenarios de SnailPay, conversión y acreditación de montos, clasificación de resultados de pago, timeout, persistencia local y estadísticas deterministas del dashboard.
+La suite contiene 47 pruebas en seis archivos: 18 en dos archivos de backend y 29 en cuatro archivos de frontend. Cubre escenarios de SnailPay, replay idempotente y concurrencia, conflicto HTTP 409, protección contra doble acreditación, CORS, compatibilidad de storage, clasificación de pagos, timeout y estadísticas deterministas del dashboard.
 
 ## Escenarios de SnailPay
 
@@ -122,7 +122,7 @@ El frontend tomó como base el scaffold estándar React + TypeScript de Vite. No
 
 ### Persistencia y autenticación local
 
-El estado se guarda bajo la clave de LocalStorage `app:v1`. Conceptualmente contiene `user`, `session`, `wallet.balanceCents` y `wallet.lastPayment`.
+El estado se guarda bajo la clave de LocalStorage `app:v1`. Conceptualmente contiene `user`, `session`, `wallet.balanceCents`, `wallet.lastPayment` y `wallet.appliedIdempotencyKeys`.
 
 El registro crea una credencial derivada con PBKDF2, HMAC-SHA-256, salt aleatoria y 600,000 iteraciones. Se persisten el algoritmo, las iteraciones, el salt y el `derivedKey`; la contraseña original y su confirmación no se guardan en texto plano.
 
@@ -132,11 +132,17 @@ La autenticación es una simulación local y no sustituye un sistema de identida
 
 El formulario usa rutas relativas de API. Vite redirige `/api` al backend local en el puerto 3000, lo que evita configurar CORS para el entorno de desarrollo.
 
-### Timeout y prevención de doble envío
+### Timeout, doble envío e idempotencia
 
 El cliente usa `AbortController` y vence la espera cerca de 5 segundos. SnailPay dispone de una fixture slow que demora cerca de 10 segundos. Abortar la espera del cliente no garantiza detener el trabajo del servidor.
 
-`submissionLock` y `isSubmitting` impiden requests simultáneos desde el mismo formulario durante una recarga en curso.
+`submissionLock` y `isSubmitting` impiden doble clic o Enter simultáneos desde el mismo formulario durante una recarga en curso.
+
+La `Idempotency-Key` identifica una operación lógica de recarga. Para la misma key y el mismo payload, el backend reutiliza la operación: los requests concurrentes comparten la ejecución pendiente y los reintentos reciben el resultado ya disponible. Reutilizar la misma key con otro payload devuelve HTTP 409.
+
+Ante timeout, el formulario conserva la key para el reintento sin editar campos. Así, el backend no crea una segunda operación y puede reutilizar el estado pending o el resultado de la primera. En LocalStorage, `appliedIdempotencyKeys` evita sumar dos veces el saldo si se recibe de nuevo una respuesta approved de la misma operación.
+
+El backend no modifica directamente el balance: el frontend acredita solo después de una respuesta approved válida. Las respuestas rejected y error, incluido el system error simulado, no incrementan el saldo; el timeout tampoco acredita. La idempotencia reproduce el resultado de la operación y no convierte un error en approved.
 
 ### Dashboard simulado
 
@@ -168,9 +174,10 @@ La participación de IA fue revisada mediante un proceso humano: cada incremento
 - La solución mantiene persistencia local; no se implementó una base de datos.
 - La autenticación es local y no existe identidad backend.
 - SnailPay es un simulador, no un proveedor de pagos real.
-- No hay idempotencia distribuida. El backend no acredita saldo ni persiste transacciones financieras; el saldo se acredita en frontend solo después de validar una respuesta approved. En un entorno real se requerirían idempotency keys y consulta o reconciliación de estado.
+- La idempotencia del backend se conserva en memoria para una única instancia. Se pierde al reiniciar el proceso y no se comparte entre múltiples instancias; en producción requeriría almacenamiento durable y compartido, además de consulta o reconciliación de estado.
+- La key pendiente del formulario no se persiste al recargar la página.
 - No existe una suite E2E completa de navegador.
-- No hay un despliegue de producción configurado.
+- No hay un despliegue activo ni URLs públicas configuradas; el workflow de GitHub Actions existe, pero los jobs de deployment siguen condicionados a `DEPLOY_ENABLED`.
 
 ## Estructura del proyecto
 
