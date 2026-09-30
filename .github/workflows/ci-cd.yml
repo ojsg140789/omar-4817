@@ -1,6 +1,7 @@
 name: CI/CD
 
 on:
+  # Cada push a master valida ambos proyectos antes de habilitar cualquier publicación.
   push:
     branches: [master]
   workflow_dispatch:
@@ -9,6 +10,7 @@ permissions:
   contents: read
 
 concurrency:
+  # Solo la ejecución más reciente puede publicar producción.
   group: production
   cancel-in-progress: true
 
@@ -26,6 +28,7 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
+      # Las mismas verificaciones se ejecutan localmente con npm.cmd en Windows.
       - run: npm test
       - run: npm run typecheck
       - run: npm run build
@@ -48,6 +51,7 @@ jobs:
       - run: npm run build
 
   deploy-backend:
+    # Sin esta variable del repositorio, los deploys quedan omitidos y CI sigue validando el código.
     needs: [backend-ci, frontend-ci]
     if: ${{ vars.DEPLOY_ENABLED == 'true' }}
     runs-on: ubuntu-latest
@@ -57,6 +61,7 @@ jobs:
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
           DEPLOY_REF: ${{ github.sha }}
         run: |
+          # Conserva o añade el separador correcto antes de anexar el commit que Render desplegará.
           case "$RENDER_DEPLOY_HOOK_URL" in
             *\? | *\&) separator='' ;;
             *\?*) separator='&' ;;
@@ -84,6 +89,7 @@ jobs:
       - run: npm ci
       - run: npm run build
         env:
+          # Es una URL pública de compilación, no un secreto del navegador.
           VITE_API_URL: ${{ vars.VITE_API_URL }}
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:

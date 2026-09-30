@@ -7,12 +7,14 @@ export function updateWalletForPayment(
 ): { wallet: Wallet; handling: Exclude<PaymentHandlingResult, 'persistence-failure'> } {
   const cents = approvedCents(result)
   if (cents === null) {
+    // Rechazos y errores se registran como último resultado, pero nunca acreditan saldo.
     return {
       wallet: { ...wallet, lastPayment: result.payment },
       handling: 'recorded',
     }
   }
 
+  // Un replay puede actualizar lastPayment, pero la clave ya aplicada impide sumar dos veces.
   const alreadyApplied = wallet.appliedIdempotencyKeys.includes(result.idempotencyKey)
   return {
     wallet: {

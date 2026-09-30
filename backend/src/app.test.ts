@@ -73,6 +73,7 @@ describe('POST /api/payments e idempotencia', () => {
   })
 
   it('replays the exact HTTP response for the same operation', async () => {
+    // El replay debe conservar cuerpo y código HTTP, no volver a simular un pago.
     const key = randomUUID()
     const first = await postPayment(validBody, key)
     const firstBody = await first.json()
@@ -98,6 +99,7 @@ describe('CORS', () => {
     'http://localhost:5173',
     'http://127.0.0.1:5173',
   ])('allows the development preflight from %s', async (origin) => {
+    // app.ts consulta el entorno por solicitud; por eso cada caso puede cambiarlo sin reiniciar el servidor.
     process.env.NODE_ENV = 'development'
     delete process.env.FRONTEND_ORIGIN
 

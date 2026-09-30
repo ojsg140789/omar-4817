@@ -168,6 +168,7 @@ describe('requestPayment', () => {
   })
 
   it('clasifica el abort iniciado por el timer como timeout sin esperar cinco segundos reales', async () => {
+    // El mock reacciona al AbortSignal real; los temporizadores falsos conservan la prueba rápida y determinista.
     vi.useFakeTimers()
     const fetchMock = vi.fn((_url: string, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
       const signal = init?.signal as AbortSignal

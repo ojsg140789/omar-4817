@@ -24,6 +24,7 @@ export interface AppState {
   wallet: Wallet
 }
 
+// Una única clave agrupa el estado local versionado de la demostración.
 const STORAGE_KEY = 'app:v1'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -38,6 +39,7 @@ type StoredAppState = Omit<AppState, 'wallet'> & {
 }
 
 function isAppState(value: unknown): value is StoredAppState {
+  // Validar todo el contrato evita que LocalStorage corrupto llegue a las vistas privadas.
   if (!isRecord(value) || !isRecord(value.wallet)) return false
   const balance = value.wallet.balanceCents
   if (typeof balance !== 'number' || !Number.isSafeInteger(balance) || balance < 0) {
@@ -93,6 +95,7 @@ export function readAppState(): AppState | null {
   if (!isAppState(value)) {
     throw new Error('Los datos locales no tienen un formato válido. No se han borrado ni reemplazado.')
   }
+  // Los estados anteriores no tenían estos campos; se normalizan sin reescribir el almacenamiento.
   return {
     ...value,
     wallet: {
@@ -105,6 +108,7 @@ export function readAppState(): AppState | null {
 
 export function saveAppState(state: AppState): void {
   try {
+    // La escritura ocurre antes de que App actualice el estado visual para mantenerlos coherentes.
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
   } catch {
     throw new Error('No se pudieron guardar los datos locales. Comprueba el almacenamiento del navegador y vuelve a intentar.')

@@ -107,6 +107,7 @@ describe('idempotencia de SnailPay', () => {
   })
 
   it('comparte la promesa de una operación lenta concurrente y simula una vez', async () => {
+    // La Promise pendiente en memoria cierra la carrera entre dos solicitudes con la misma clave.
     vi.useFakeTimers()
     const slowRequest = { ...validRequest, amount: 999.99 }
     let executions = 0

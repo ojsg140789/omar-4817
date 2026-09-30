@@ -57,6 +57,7 @@ function normalizeCardNumber(value: string): string {
 }
 
 function responseFields(body: unknown): ResponseFields {
+  // Las respuestas de error reflejan únicamente campos que pudieron normalizarse con seguridad.
   const value = isRecord(body) ? body : {}
   return {
     amount: typeof value.amount === 'number' && Number.isFinite(value.amount) ? value.amount : null,
@@ -68,6 +69,7 @@ function responseFields(body: unknown): ResponseFields {
 }
 
 function createResponse(fields: ResponseFields, status: PaymentStatus, statusDetail: string): PaymentResponse {
+  // Cada ejecución nueva crea identificadores; los replays los preserva la capa idempotente.
   const id = `pay_${randomUUID()}`
   return {
     id,
@@ -85,6 +87,7 @@ function createResponse(fields: ResponseFields, status: PaymentStatus, statusDet
 }
 
 export function validatePaymentRequest(body: unknown): ValidationResult {
+  // La validación devuelve valores normalizados que comparten simulación e idempotencia.
   if (!isRecord(body)) return { ok: false, message: 'El body debe ser un objeto JSON.' }
 
   const cardNumber = typeof body.cardNumber === 'string' ? normalizeCardNumber(body.cardNumber) : ''
@@ -154,6 +157,7 @@ export async function simulatePayment(request: PaymentRequest): Promise<PaymentR
   }
 
   if (request.amount === SLOW_AMOUNT) {
+    // Fixture reproducible para verificar que un timeout del cliente puede reintentarse con la misma clave.
     await wait(SLOW_DELAY_MS)
   }
 

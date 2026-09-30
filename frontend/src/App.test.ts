@@ -36,6 +36,7 @@ function approvedResult(idempotencyKey: string): PaymentResponseResult {
 
 describe('updateWalletForPayment', () => {
   it('acredita una clave nueva una sola vez y acredita otra clave independiente', () => {
+    // Un replay comparte resultado de pago, pero esta protección local evita volver a sumar el saldo.
     const initial: Wallet = { balanceCents: 100, lastPayment: null, appliedIdempotencyKeys: [] }
     const first = updateWalletForPayment(initial, approvedResult(keyOne))
     const replay = updateWalletForPayment(first.wallet, approvedResult(keyOne))

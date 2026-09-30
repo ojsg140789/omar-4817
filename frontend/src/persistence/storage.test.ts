@@ -94,6 +94,7 @@ describe('readAppState', () => {
   })
 
   it('rechaza datos corruptos sin sobrescribir ni borrar el contenido original', () => {
+    // El error debe ser reversible para el usuario: leer datos inválidos nunca los destruye silenciosamente.
     const original = 'datos-corruptos'
     storage.setItem('app:v1', original)
 

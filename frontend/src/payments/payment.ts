@@ -50,6 +50,7 @@ export type PaymentHandlingResult = 'credited' | 'already-credited' | 'recorded'
 const PAYMENT_TIMEOUT_MS = 5_000
 
 export function paymentEndpoint(baseUrl = import.meta.env.VITE_API_URL): string {
+  // En local queda relativa para que Vite la redirija; en producción acepta una base pública configurable.
   const normalizedBaseUrl = baseUrl?.trim().replace(/\/+$/, '') ?? ''
   return `${normalizedBaseUrl}/api/payments`
 }
@@ -108,6 +109,7 @@ export async function requestPayment(
   payerEmail: string,
   idempotencyKey: string,
 ): Promise<PaymentResult> {
+  // Se normalizan los valores antes de enviarlos para que coincidan con la operación idempotente del servidor.
   const requestedCents = parseAmountToCents(values.amount)
   if (requestedCents === null) throw new Error('El monto no tiene un formato válido.')
 
@@ -116,6 +118,7 @@ export async function requestPayment(
   const normalizedPayerEmail = payerEmail.trim().toLowerCase()
   const controller = new AbortController()
   let timedOut = false
+  // El cliente deja de esperar a los cinco segundos, aunque el simulador pueda completar la operación después.
   const timeoutId = setTimeout(() => {
     timedOut = true
     controller.abort()
@@ -132,6 +135,7 @@ export async function requestPayment(
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          // La misma clave identifica reintentos de una misma intención de recarga.
           'Idempotency-Key': idempotencyKey,
         },
         signal: controller.signal,
@@ -146,6 +150,7 @@ export async function requestPayment(
         }),
       })
     } catch {
+      // Solo un rechazo de fetch sin abort se considera un problema de red.
       return timedOut && controller.signal.aborted
         ? timeoutResult
         : {
@@ -167,12 +172,14 @@ export async function requestPayment(
     }
     if (timedOut && controller.signal.aborted) return timeoutResult
     if (!isPaymentResponse(body)) {
+      // Una respuesta HTTP no basta: se valida el contrato antes de usar sus datos.
       return {
         kind: 'invalid-response',
         message: 'SnailPay devolvió una respuesta inválida.',
       }
     }
 
+    // El estado HTTP y el estado de negocio deben coincidir para clasificar el resultado.
     const kind = response.status === 200 && body.status === 'approved'
       ? 'approved'
       : response.status === 200 && body.status === 'rejected'
@@ -206,6 +213,7 @@ export async function requestPayment(
     }
     return result
   } finally {
+    // Se limpia siempre para que una solicitud resuelta no pueda abortarse más tarde.
     clearTimeout(timeoutId)
   }
 }
@@ -213,6 +221,7 @@ export async function requestPayment(
 export function approvedCents(result: PaymentResponseResult): number | null {
   const { payment } = result
   const cents = amountToCents(payment.transaction_amount)
+  // Solo una respuesta aprobada y coherente con la solicitud puede acreditar saldo local.
   if (!result.httpOk
     || result.httpStatus !== 200
     || payment.status !== 'approved'

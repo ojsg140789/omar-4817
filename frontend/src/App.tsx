@@ -11,6 +11,7 @@ import { readAppState, saveAppState, type AppState } from './persistence/storage
 
 function loadStoredState(): { state: AppState | null; error: string } {
   try {
+    // La lectura es síncrona: el primer render ya conoce si existe una sesión válida.
     return { state: readAppState(), error: '' }
   } catch (error) {
     return {
@@ -26,6 +27,7 @@ function App() {
   const { state, error } = stored
   const location = useLocation()
   const navigate = useNavigate()
+  // La sesión solo autentica si pertenece exactamente al usuario almacenado.
   const authenticated = Boolean(state?.user && state.session?.userId === state.user.id)
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register'
 
@@ -34,6 +36,7 @@ function App() {
     try {
       const updated = logout()
       setStored({ state: updated, error: '' })
+      // replace evita volver al dashboard con el historial del navegador tras cerrar sesión.
       navigate('/login', { replace: true })
     } catch (error) {
       setLogoutError(error instanceof Error ? error.message : 'No se pudo cerrar sesión. Vuelve a intentar.')
@@ -41,6 +44,7 @@ function App() {
   }
 
   function handlePaymentResult(result: PaymentResponseResult): PaymentHandlingResult {
+    // App es el único punto que acredita saldo y persiste el wallet compartido.
     const current = readAppState()
     if (!current?.user || current.session?.userId !== current.user.id
       || current.user.id !== result.payerId || current.user.email !== result.payerEmail) {
@@ -53,6 +57,7 @@ function App() {
       wallet: walletUpdate.wallet,
     }
     try {
+      // Persistir antes de actualizar React evita mostrar un saldo que no quedó guardado.
       saveAppState(updated)
     } catch {
       return 'persistence-failure'
@@ -93,6 +98,7 @@ function App() {
           <Route
             path="/dashboard"
             element={
+              // El guard decide antes de construir el dashboard privado.
               <ProtectedRoute isAuthenticated={authenticated}>
                 {authenticated && state?.user && (
                   <Dashboard

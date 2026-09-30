@@ -29,8 +29,10 @@ export default function RegisterForm({ onRegistered }: RegisterFormProps) {
     setSubmitError('')
     setIsSubmitting(true)
     try {
+      // El registro devuelve AppState con sesión local solo después de guardar una credencial derivada.
       const result = await registerUser(values)
       if (!result.ok) {
+        // El foco se dirige al primer campo inválido para una corrección accesible.
         setErrors(result.errors)
         const firstInvalid = form.elements.namedItem(Object.keys(result.errors)[0])
         if (firstInvalid instanceof HTMLInputElement) firstInvalid.focus()

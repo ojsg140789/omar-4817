@@ -15,6 +15,7 @@ type RegistrationResult =
   | { ok: false; errors: RegistrationErrors }
 
 export async function registerUser(values: RegistrationValues): Promise<RegistrationResult> {
+  // Se compactan espacios y se normaliza el correo antes de validar y persistir.
   const fullName = values.fullName.trim().replace(/\s+/g, ' ')
   const email = values.email.trim().toLowerCase()
   const errors: RegistrationErrors = {}
@@ -33,10 +34,12 @@ export async function registerUser(values: RegistrationValues): Promise<Registra
   }
   if (Object.keys(errors).length > 0) return { ok: false, errors }
 
+  // La aplicación admite una sola cuenta local y no debe sobrescribirla.
   if (readAppState()?.user) {
     throw new Error('Ya existe una cuenta local en este navegador. No se reemplazará con otro registro.')
   }
 
+  // La derivación ocurre antes de construir el estado para no persistir secretos en texto plano.
   let passwordCredential
   let id: string
   try {
@@ -52,6 +55,7 @@ export async function registerUser(values: RegistrationValues): Promise<Registra
     wallet: { balanceCents: 0, lastPayment: null, appliedIdempotencyKeys: [] },
   }
 
+  // Se comprueba otra vez después de PBKDF2 por si otra acción creó la cuenta durante la espera.
   if (readAppState()?.user) {
     throw new Error('Ya existe una cuenta local en este navegador. No se reemplazará con otro registro.')
   }

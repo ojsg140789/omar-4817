@@ -3,6 +3,7 @@ import { historicRaces, lostCount, snails, winsBySnail, wonCount } from './dashb
 
 describe('datos del dashboard', () => {
   it('mantiene estadísticas congruentes para las seis carreras simuladas', () => {
+    // Se validan las salidas públicas derivadas en lugar de duplicar la lógica de cálculo aquí.
     expect(snails).toHaveLength(6)
     expect(historicRaces).toHaveLength(6)
     expect(wonCount).toBe(4)

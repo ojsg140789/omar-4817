@@ -49,10 +49,13 @@ export default function RechargeForm({ payerId, payerEmail, onPaymentResult }: R
   const [submitError, setSubmitError] = useState('')
   const [submitMessage, setSubmitMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // El bloqueo inmediato cubre doble clic y Enter antes de que React vuelva a renderizar.
   const submissionLock = useRef(false)
+  // La clave sobrevive timeout y errores recuperables mientras el usuario no cambie la operación.
   const operationKey = useRef<string | null>(null)
 
   function updateField(field: keyof PaymentFormValues, value: string) {
+    // Editar cualquier dato crea una nueva intención y por ello invalida la clave anterior.
     operationKey.current = null
     setValues((current) => ({ ...current, [field]: value }))
     setErrors((current) => ({ ...current, [field]: undefined }))
@@ -73,6 +76,7 @@ export default function RechargeForm({ payerId, payerEmail, onPaymentResult }: R
       return
     }
 
+    // Se activa antes del primer await para impedir dos solicitudes simultáneas desde la interfaz.
     submissionLock.current = true
     setErrors({})
     setSubmitError('')
@@ -81,6 +85,7 @@ export default function RechargeForm({ payerId, payerEmail, onPaymentResult }: R
     try {
       const idempotencyKey = operationKey.current ?? crypto.randomUUID()
       operationKey.current = idempotencyKey
+      // Timeout, red y contrato inválido no limpian la clave ni los campos: permiten reintentar igual.
       const result = await requestPayment(values, payerId, payerEmail, idempotencyKey)
       if (!('payment' in result)) {
         setSubmitError(result.message)
@@ -88,6 +93,7 @@ export default function RechargeForm({ payerId, payerEmail, onPaymentResult }: R
       }
 
       if (result.kind === 'idempotency-conflict') {
+        // Un conflicto significa que la clave ya representa otra operación; la siguiente debe ser nueva.
         operationKey.current = null
         setSubmitError(result.message)
         return
@@ -95,8 +101,10 @@ export default function RechargeForm({ payerId, payerEmail, onPaymentResult }: R
 
       const handling = onPaymentResult(result)
       if (handling === 'persistence-failure') {
+        // Sin persistencia, ni los campos ni la clave se descartan para no perder la posibilidad de repetir.
         setSubmitError('No fue posible guardar el resultado de la recarga. Intenta nuevamente.')
       } else if (result.kind === 'approved' && (handling === 'credited' || handling === 'already-credited')) {
+        // Solo tras acreditar y guardar se prepara el formulario para una operación nueva.
         operationKey.current = null
         setValues(initialValues)
         setSubmitMessage(result.message)
@@ -109,6 +117,7 @@ export default function RechargeForm({ payerId, payerEmail, onPaymentResult }: R
     } catch {
       setSubmitError('No fue posible guardar el resultado de la recarga. Intenta nuevamente.')
     } finally {
+      // Se libera tanto para respuestas finales como para errores inesperados.
       submissionLock.current = false
       setIsSubmitting(false)
     }

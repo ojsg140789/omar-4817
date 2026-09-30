@@ -27,8 +27,10 @@ export default function LoginForm({ onLoggedIn }: LoginFormProps) {
     setSubmitError('')
     setIsSubmitting(true)
     try {
+      // El módulo de autenticación devuelve un estado completo solo cuando la credencial local coincide.
       const result = await login(values)
       if (!result.ok) {
+        // El foco se dirige al primer campo inválido para que la corrección sea inmediata con teclado.
         setErrors(result.errors)
         const firstInvalid = form.elements.namedItem(Object.keys(result.errors)[0])
         if (firstInvalid instanceof HTMLInputElement) firstInvalid.focus()

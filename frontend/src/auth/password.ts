@@ -10,6 +10,7 @@ async function derivePasswordKey(
   salt: Uint8Array<ArrayBuffer>,
   iterations: number,
 ): Promise<string> {
+  // PBKDF2 deriva una credencial verificable; la contraseña original nunca se conserva.
   const key = await crypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(password),
@@ -27,6 +28,7 @@ async function derivePasswordKey(
 }
 
 export async function derivePasswordCredential(password: string): Promise<PasswordCredential> {
+  // Cada registro recibe una sal aleatoria para que contraseñas iguales no produzcan la misma clave.
   const salt = crypto.getRandomValues(new Uint8Array(16))
   const iterations = 600_000
   const derivedKey = await derivePasswordKey(password, salt, iterations)
@@ -43,6 +45,7 @@ export async function verifyPassword(
   password: string,
   credential: PasswordCredential,
 ): Promise<boolean> {
+  // Se compara la clave derivada, no una contraseña almacenada en LocalStorage.
   if (credential.algorithm !== 'PBKDF2-SHA-256') {
     throw new Error('El algoritmo de la credencial no es compatible.')
   }

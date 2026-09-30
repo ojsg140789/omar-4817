@@ -7,6 +7,7 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ isAuthenticated, children }: ProtectedRouteProps) {
+  // Al redirigir antes de devolver children, Dashboard no llega a montarse sin sesión válida.
   if (!isAuthenticated) return <Navigate to="/login" replace />
   return children
 }

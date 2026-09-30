@@ -27,11 +27,13 @@ export const historicRaces: HistoricRace[] = [
   { id: 'race-6', winnerId: 'menta', selectedSnailId: 'coco' },
 ]
 
+// Son datos deterministas de presentación; no existe lógica de apuestas ni carreras ejecutables.
 const raceResults = historicRaces.map((race) => ({
   ...race,
   won: race.winnerId === race.selectedSnailId,
 }))
 
+// Todos los indicadores se derivan de las mismas seis carreras para mantenerlos congruentes.
 export const wonCount = raceResults.filter((race) => race.won).length
 export const lostCount = raceResults.length - wonCount
 

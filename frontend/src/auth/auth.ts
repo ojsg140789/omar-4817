@@ -13,6 +13,7 @@ type LoginResult =
   | { ok: false; errors: LoginErrors }
 
 export async function login(values: LoginValues): Promise<LoginResult> {
+  // Se normaliza el correo igual que durante el registro para comparar una identidad estable.
   const email = values.email.trim().toLowerCase()
   const errors: LoginErrors = {}
 
@@ -41,6 +42,7 @@ export async function login(values: LoginValues): Promise<LoginResult> {
   }
   if (!matches) throw new Error('Correo o contraseña incorrectos.')
 
+  // PBKDF2 es asíncrono: releer evita crear sesión sobre datos que cambiaron durante la espera.
   const current = readAppState()
   const currentCredential = current?.user?.passwordCredential
   if (!current?.user || !currentCredential || current.user.id !== user.id || current.user.email !== user.email
@@ -61,6 +63,7 @@ export function logout(): AppState {
   if (!current) {
     throw new Error('No se encontraron los datos locales. Recarga la página para comprobar el estado.')
   }
+  // Cerrar sesión preserva usuario y wallet; solo elimina la sesión local.
   const state: AppState = { ...current, session: null }
   saveAppState(state)
   return state

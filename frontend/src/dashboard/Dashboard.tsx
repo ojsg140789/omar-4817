@@ -70,6 +70,7 @@ function Dashboard({ fullName, userId, userEmail, balanceCents, logoutError, onL
               </PieChart>
             </ResponsiveContainer>
           </div>
+          {/* La lista conserva el mismo dato del gráfico para lectores de pantalla y sin color. */}
           <ul className="chart-list">
             {outcomeData.map((outcome) => (
               <li key={outcome.name}>{outcome.name}: {outcome.value}</li>
@@ -105,6 +106,7 @@ function Dashboard({ fullName, userId, userEmail, balanceCents, logoutError, onL
           {showRechargeForm ? 'Ocultar formulario' : 'Recargar saldo'}
         </button>
         {showRechargeForm && (
+          // Dashboard entrega los datos del pagador; App conserva la responsabilidad de persistir el wallet.
           <RechargeForm payerId={userId} payerEmail={userEmail} onPaymentResult={onPaymentResult} />
         )}
       </section>
