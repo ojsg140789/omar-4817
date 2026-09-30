@@ -48,11 +48,36 @@ export type PaymentResult = PaymentResponseResult | PaymentClientErrorResult
 export type PaymentHandlingResult = 'credited' | 'already-credited' | 'recorded' | 'persistence-failure'
 
 const PAYMENT_TIMEOUT_MS = 5_000
+// Este límite solo corta la espera local del warm-up; no modifica los cinco segundos del pago.
+const HEALTH_CHECK_TIMEOUT_MS = 3_000
 
-export function paymentEndpoint(baseUrl = import.meta.env.VITE_API_URL): string {
+function backendEndpoint(path: '/api/payments' | '/health', baseUrl = import.meta.env.VITE_API_URL): string {
   // En local queda relativa para que Vite la redirija; en producción acepta una base pública configurable.
   const normalizedBaseUrl = baseUrl?.trim().replace(/\/+$/, '') ?? ''
-  return `${normalizedBaseUrl}/api/payments`
+  return `${normalizedBaseUrl}${path}`
+}
+
+export function paymentEndpoint(baseUrl = import.meta.env.VITE_API_URL): string {
+  return backendEndpoint('/api/payments', baseUrl)
+}
+
+export function healthEndpoint(baseUrl = import.meta.env.VITE_API_URL): string {
+  return backendEndpoint('/health', baseUrl)
+}
+
+export async function warmUpBackend(): Promise<void> {
+  // Solicitud best effort para adelantar un posible inicio en frío; abortarla no prueba que la infraestructura no la recibió.
+  // No hay retries ni pings periódicos, porque este GET no mantiene activo el backend artificialmente.
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT_MS)
+
+  try {
+    await fetch(healthEndpoint(), { method: 'GET', signal: controller.signal })
+  } catch {
+    // El fallo se ignora: no modifica AppState, sesión, wallet ni la interfaz del Dashboard.
+  } finally {
+    clearTimeout(timeoutId)
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

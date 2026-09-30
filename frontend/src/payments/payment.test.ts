@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   amountToCents,
   approvedCents,
+  healthEndpoint,
   paymentEndpoint,
   parseAmountToCents,
   requestPayment,
@@ -97,6 +98,14 @@ describe('paymentEndpoint', () => {
     [' https://backend.example.com/// ', 'https://backend.example.com/api/payments'],
   ])('normaliza %s', (baseUrl, expectedEndpoint) => {
     expect(paymentEndpoint(baseUrl)).toBe(expectedEndpoint)
+  })
+
+  it.each([
+    [undefined, '/health'],
+    ['https://backend.example.com', 'https://backend.example.com/health'],
+    [' https://backend.example.com/// ', 'https://backend.example.com/health'],
+  ])('construye el endpoint de health para %s', (baseUrl, expectedEndpoint) => {
+    expect(healthEndpoint(baseUrl)).toBe(expectedEndpoint)
   })
 })
 

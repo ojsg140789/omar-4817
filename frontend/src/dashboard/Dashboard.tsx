@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Bar,
   BarChart,
@@ -13,7 +13,7 @@ import {
 } from 'recharts'
 import { lostCount, outcomeData, winsBySnail, wonCount } from './dashboardData.ts'
 import RechargeForm from '../payments/RechargeForm.tsx'
-import type { PaymentHandlingResult, PaymentResponseResult } from '../payments/payment.ts'
+import { warmUpBackend, type PaymentHandlingResult, type PaymentResponseResult } from '../payments/payment.ts'
 
 interface DashboardProps {
   fullName: string
@@ -29,6 +29,11 @@ const outcomeColors = ['#15803d', '#b91c1c']
 
 function Dashboard({ fullName, userId, userEmail, balanceCents, logoutError, onLogout, onPaymentResult }: DashboardProps) {
   const [showRechargeForm, setShowRechargeForm] = useState(false)
+
+  useEffect(() => {
+    // El Dashboard renderiza sin depender de este GET; StrictMode puede repetirlo en desarrollo y no tiene efectos de negocio.
+    void warmUpBackend()
+  }, [])
 
   return (
     <section className="dashboard" aria-labelledby="dashboard-title">

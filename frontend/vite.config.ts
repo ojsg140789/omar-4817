@@ -5,8 +5,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      // En desarrollo mantiene /api relativo y evita configurar CORS para el servidor de Vite.
+      // En desarrollo /api y /health conservan rutas relativas y llegan al mismo backend local sin configurar CORS en Vite.
       '/api': 'http://127.0.0.1:3000',
+      '/health': 'http://127.0.0.1:3000',
     },
   },
 })
