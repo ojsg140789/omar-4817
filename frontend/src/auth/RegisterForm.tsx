@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router'
 import { registerUser, type RegistrationErrors, type RegistrationValues } from './registration.ts'
 import type { AppState } from '../persistence/storage.ts'
 
@@ -44,10 +45,10 @@ export default function RegisterForm({ onRegistered }: RegisterFormProps) {
   }
 
   return (
-    <section aria-labelledby="register-title">
+    <section className="auth-card" aria-labelledby="register-title">
       <h2 id="register-title">Crear cuenta</h2>
       <p>Registra una cuenta local para acceder a la aplicación.</p>
-      <form onSubmit={handleSubmit} noValidate aria-busy={isSubmitting}>
+      <form className="auth-form" onSubmit={handleSubmit} noValidate aria-busy={isSubmitting}>
         <div className="field">
           <label htmlFor="fullName">Nombre completo</label>
           <input id="fullName" name="fullName" autoComplete="name" required
@@ -85,6 +86,7 @@ export default function RegisterForm({ onRegistered }: RegisterFormProps) {
         <button type="submit" disabled={isSubmitting}>
           {isSubmitting ? 'Creando cuenta…' : 'Crear cuenta'}
         </button>
+        <p className="auth-link"><Link to="/login">Ya tengo cuenta / Iniciar sesión</Link></p>
         <p className="notice">Esta es una simulación local. Los datos se guardan en este navegador.</p>
       </form>
     </section>

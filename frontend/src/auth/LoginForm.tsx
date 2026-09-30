@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router'
 import { login, type LoginErrors, type LoginValues } from './auth.ts'
 import type { AppState } from '../persistence/storage.ts'
 
@@ -42,10 +43,10 @@ export default function LoginForm({ onLoggedIn }: LoginFormProps) {
   }
 
   return (
-    <section aria-labelledby="login-title">
+    <section className="auth-card" aria-labelledby="login-title">
       <h2 id="login-title">Iniciar sesión</h2>
       <p>Accede con el correo y la contraseña de tu cuenta local.</p>
-      <form onSubmit={handleSubmit} noValidate aria-busy={isSubmitting}>
+      <form className="auth-form" onSubmit={handleSubmit} noValidate aria-busy={isSubmitting}>
         <div className="field">
           <label htmlFor="login-email">Correo electrónico</label>
           <input id="login-email" name="email" type="email" autoComplete="username" required
@@ -66,6 +67,7 @@ export default function LoginForm({ onLoggedIn }: LoginFormProps) {
         <button type="submit" disabled={isSubmitting}>
           {isSubmitting ? 'Verificando…' : 'Iniciar sesión'}
         </button>
+        <p className="auth-link"><Link to="/register">Registrarse</Link></p>
         <p className="notice">Esta es una simulación local. Los datos se guardan en este navegador.</p>
       </form>
     </section>
